@@ -1,0 +1,17 @@
+# Direct dependencies used by the exported ASR scripts.
+# This is not a reconstructed lockfile. Install the appropriate CUDA torch build first.
+torch
+transformers
+accelerate
+datasets
+numpy
+scipy
+soundfile
+librosa
+soxr
+jiwer
+pyarrow
+PyYAML
+scikit-learn
+tqdm
+# VC additionally requires a compatible torchaudio and separately obtained upstream models.

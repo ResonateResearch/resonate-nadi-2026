@@ -1,0 +1,16 @@
+# Direct dependency inventory, not a tested or frozen environment.
+# Install a compatible SpeechBrain source checkout separately (see README.md).
+# Select matching torch/torchaudio builds for your CUDA runtime before use.
+torch
+torchaudio
+transformers
+hyperpyyaml
+datasets
+pyarrow
+numpy
+soundfile
+# VAD preparation only (vad_speech.py); not imported by training/prediction.
+silero-vad
+matplotlib
+tqdm
+# Optional only when explicitly enabling W&B logging: wandb

@@ -1,0 +1,53 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite the Resonate NADI 2026 system paper."
+type: software
+title: "Resonate at NADI 2026 Shared Task: Robust Speech Recognition and Dialect Identification under Acoustic and Domain Shift"
+abstract: "Code and reproducibility resources in the resonate-nadi-2026 repository for the Resonate NADI 2026 ASR and ADI systems."
+repository-code: "https://github.com/ResonateResearch/resonate-nadi-2026"
+version: "1.0.0"
+license: Apache-2.0
+authors:
+  - family-names: Shoaib
+    given-names: Omar
+  - family-names: Sokar
+    given-names: Mohamed Ashraf
+  - family-names: Motawie
+    given-names: Mohamed
+  - family-names: AboElFottouh
+    given-names: Omar
+  - family-names: Hassouna
+    given-names: Ahmed
+  - family-names: Hassan
+    given-names: Al-Amir
+  - family-names: Zaki
+    given-names: Nader Essam
+  - family-names: Ali
+    given-names: Wael
+keywords:
+  - Arabic speech recognition
+  - Arabic dialect identification
+  - NADI 2026
+  - WavLM
+  - ROVER
+  - voice conversion
+preferred-citation:
+  type: conference-paper
+  title: "Resonate at NADI 2026 Shared Task: Robust Speech Recognition and Dialect Identification under Acoustic and Domain Shift"
+  year: 2026
+  authors:
+    - family-names: Shoaib
+      given-names: Omar
+    - family-names: Sokar
+      given-names: Mohamed Ashraf
+    - family-names: Motawie
+      given-names: Mohamed
+    - family-names: AboElFottouh
+      given-names: Omar
+    - family-names: Hassouna
+      given-names: Ahmed
+    - family-names: Hassan
+      given-names: Al-Amir
+    - family-names: Zaki
+      given-names: Nader Essam
+    - family-names: Ali
+      given-names: Wael

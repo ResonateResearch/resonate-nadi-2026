@@ -1,0 +1,215 @@
+# Public configuration for the README-designated submission_wavlm system.
+# Numerical settings match the archived seed-420 WavLM Base+ run.
+# Scientific values are retained. Paths, references, comments and the local
+# pooling import are portable release adaptations. This is not a checkpoint.
+# Required: --data_root (local prepared inputs) and --ssl_hub (local Base+ model).
+
+seed: 420
+__set_seed: !apply:speechbrain.utils.seed_everything [!ref <seed>]
+data_root: !PLACEHOLDER
+output_folder: results/ca_mhfa_adi20/submission_wavlm
+save_folder: !ref <output_folder>/save
+train_log: !ref <output_folder>/train_log.txt
+
+# The loader reads prepared Arrow caches directly; see README.md for layout.
+hf_sources:
+  - name: ArabicSpeech/ADI17
+    cache_dir: !ref <data_root>/ADI17
+    id_key: id
+    splits: {train: train, valid: dev, test: test}
+  - name: ArabicSpeech/ADI20
+    cache_dir: !ref <data_root>/ADI20
+    id_key: null
+    splits: {train: train, valid: validation, test: test}
+train_split: train
+valid_split: valid
+test_split: test
+eval_split: test
+eval_ckpt: best
+audio_key: audio
+label_key: dialect
+hf_offline: true
+
+# The 53-hour manifest supplies IDs; the actual selection targets 100 h/dialect
+# from the available real training audio, then uses VC for the remaining hours.
+use_subset: true
+subset_csv: !ref <data_root>/ADI20/adi20_53h.csv
+subset_id_col: ID
+drop_problematic: true
+drop_problematic_csvs:
+  - !ref <data_root>/ADI17/train_problematic.csv
+  - !ref <data_root>/ADI20/train_problematic.csv
+drop_reasons: [empty, severe, low]
+subset_mode: video_topup
+subset_target_h: 100.0
+subset_min_dur: 1.0
+subset_seed: !ref <seed>
+subset_restrict_to_manifest_videos: false
+adi20_duration_cache: !ref <data_root>/ADI20/adi20_durations.csv
+vc_data_folder: !ref <data_root>/voice_conversion
+vc_variant: clean
+vc_min_dur: 1.0
+
+# The recorded run did not transfer a VoxCeleb CA-MHFA checkpoint. WavLM starts
+# from Base+ weights, and CA-MHFA plus the 20-class classifier start fresh.
+pretrained_ca_mhfa_folder: false
+pretrained_include_classifier: false
+
+apply_augment: true
+prepare_augment: true
+musan_folder: !ref <data_root>/musan
+rir_folder: !ref <data_root>/RIRS_NOISES/simulated_rirs
+noise_annotation: !ref <save_folder>/noise.csv
+rir_annotation: !ref <save_folder>/rir.csv
+augment_ext: wav
+noise_max_length: 10.0
+label_encoder_file: !ref <save_folder>/dialect_encoder.txt
+ckpt_interval_minutes: 15
+
+# Required local directory containing microsoft/wavlm-base-plus model assets.
+# Public entry points force offline loading and disable implicit Hub tokens.
+ssl_hub: !PLACEHOLDER
+ssl_folder: !ref <save_folder>/ssl_checkpoint
+ssl_dim: 768
+ssl_layers: 13  # convolutional feature state plus 12 Transformer states
+freeze_ssl: false
+freeze_ssl_feature_extractor: true
+n_ssl_transformer_layers: 12
+unfreeze_start_epoch: 2
+unfreeze_rate: 3
+max_unfrozen: 12
+pre_encoder_bucket: top
+
+compressed_dim: 128
+n_heads: 64
+context: 9
+emb_dim: 256
+out_n_neurons: 20
+
+number_of_epochs: 15
+ckpts_to_keep: 15
+batch_size: 64
+lr: 0.0001
+final_lr: 0.0000001
+warmup_epochs: 5
+lr_cycles: 1
+weight_decay: 0.01
+sample_rate: 16000
+sentence_len: 5.0
+eval_len: 5.0  # short central crops for in-loop development/test evaluation
+eval_max_len: 30.0  # one central crop for standalone blind prediction
+variable_crop: false
+crop_len_range: [2.0, 10.0]
+crop_anchor_len: 5.0
+crop_var_prob: 0.5
+
+# Build this locally with --seg_len 5 --hop 5 --min_seg 2.
+segment_manifest: !ref <data_root>/adi20_segments_5s.csv
+segment_jitter_s: 2.5
+shuffle: true
+random_chunk: true
+num_workers: 16
+dataloader_options:
+  batch_size: !ref <batch_size>
+  shuffle: !ref <shuffle>
+  num_workers: !ref <num_workers>
+  pin_memory: true
+  persistent_workers: true
+  prefetch_factor: 4
+
+ssl_model: !new:speechbrain.integrations.huggingface.wavlm.WavLM
+  source: !ref <ssl_hub>
+  save_path: !ref <ssl_folder>
+  output_all_hiddens: true
+  freeze: !ref <freeze_ssl>
+  freeze_feature_extractor: !ref <freeze_ssl_feature_extractor>
+
+embedding_model: !new:ca_mhfa.CA_MHFA
+  input_size: !ref <ssl_dim>
+  num_layers: !ref <ssl_layers>
+  compressed_dim: !ref <compressed_dim>
+  n_heads: !ref <n_heads>
+  context: !ref <context>
+  emb_dim: !ref <emb_dim>
+
+classifier: !new:speechbrain.lobes.models.ECAPA_TDNN.Classifier
+  input_size: !ref <emb_dim>
+  out_neurons: !ref <out_n_neurons>
+epoch_counter: !new:speechbrain.utils.epoch_loop.EpochCounter
+  limit: !ref <number_of_epochs>
+
+add_noise: !new:speechbrain.augment.time_domain.AddNoise
+  csv_file: !ref <noise_annotation>
+  snr_low: 0
+  snr_high: 15
+  noise_sample_rate: !ref <sample_rate>
+  clean_sample_rate: !ref <sample_rate>
+  num_workers: !ref <num_workers>
+add_reverb: !new:speechbrain.augment.time_domain.AddReverb
+  csv_file: !ref <rir_annotation>
+  reverb_sample_rate: !ref <sample_rate>
+  clean_sample_rate: !ref <sample_rate>
+  num_workers: !ref <num_workers>
+speed_perturb: !new:speechbrain.augment.time_domain.SpeedPerturb
+  orig_freq: !ref <sample_rate>
+  # The source SpeechBrain constructor defaults to speeds [90, 100, 110].
+  device: cuda
+drop_freq: !new:speechbrain.augment.time_domain.DropFreq
+  drop_freq_low: 0
+  drop_freq_high: 1
+  drop_freq_count_low: 1
+  drop_freq_count_high: 3
+  drop_freq_width: 0.05
+drop_chunk: !new:speechbrain.augment.time_domain.DropChunk
+  drop_length_low: 1000
+  drop_length_high: 2000
+  drop_count_low: 1
+  drop_count_high: 5
+wav_augment: !new:speechbrain.augment.augmenter.Augmenter
+  parallel_augment: false
+  concat_original: true
+  shuffle_augmentations: true
+  min_augmentations: 1
+  max_augmentations: 2
+  augment_prob: 1
+  augmentations:
+    - !ref <add_noise>
+    - !ref <add_reverb>
+    - !ref <speed_perturb>
+    - !ref <drop_freq>
+    - !ref <drop_chunk>
+
+modules:
+  ssl_model: !ref <ssl_model>
+  embedding_model: !ref <embedding_model>
+  classifier: !ref <classifier>
+aam_margin: 0.2
+aam_scale: 32
+margin_warmup_epochs: 3
+margin_start: 0.0
+compute_cost: !new:speechbrain.nnet.losses.LogSoftmaxWrapper
+  loss_fn: !new:speechbrain.nnet.losses.AdditiveAngularMargin
+    margin: !ref <aam_margin>
+    scale: !ref <aam_scale>
+opt_class: !name:torch.optim.AdamW
+  lr: !ref <lr>
+  weight_decay: !ref <weight_decay>
+train_logger: !new:speechbrain.utils.train_logger.FileTrainLogger
+  save_file: !ref <train_log>
+
+# W&B is optional, disabled, and has no account/entity or credential defaults.
+use_wandb: false
+wandb_log_every: 256
+wandb_project: adi20-ca-mhfa
+wandb_run_name: null
+wandb_mode: disabled
+error_stats: !name:speechbrain.utils.metric_stats.MetricStats
+  metric: !name:speechbrain.nnet.losses.classification_error
+    reduction: batch
+checkpointer: !new:speechbrain.utils.checkpoints.Checkpointer
+  checkpoints_dir: !ref <save_folder>
+  recoverables:
+    ssl_model: !ref <ssl_model>
+    embedding_model: !ref <embedding_model>
+    classifier: !ref <classifier>
+    counter: !ref <epoch_counter>
